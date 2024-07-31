@@ -50,6 +50,7 @@ function Rumin(elm) {
         delay = elm.delay || "0s",
         timeScale = elm.timeScale || 1,
         repeat = elm.repeat || "",
+        repeatDelay = elm.repeatDelay || 0,
         direction = elm.direction || elm.yoyo || "",
         motionPath = elm.motionPath || "",
         offsetPath = elm.offsetPath || motionPath,
@@ -135,7 +136,6 @@ function Rumin(elm) {
                     // Push the current object to the final array
                     finalArray.push({ ...obj });
                 });
-
                 return finalArray;
             }
             function removeBlankLine(e) {
@@ -155,6 +155,14 @@ function Rumin(elm) {
                         duration: 0
                     })
                 }
+                if(repeatDelay && repeatDelay > 0){
+                    this.cssTl.push({
+                        ...this.cssTl[this.cssTl.length - 1],
+                        duration: repeatDelay
+                    })
+                }
+                console.log(this.cssTl)
+
                 let getAllKeyframes = ''
                 this.cssTl.forEach((cssTlElement, indexOfcssTl) => {
                     let makeKeyframes = (keyframeAt, totalDur) => {
@@ -233,7 +241,8 @@ function Rumin(elm) {
 //     animName:"myidanim",
 //     easing:"ease-in-out",
 //     direction: 'forwards',
-//     repeat:"infinite"
+//     repeat:"infinite",
+//     repeatDelay: 1,
 // })
 // myAnim2.set(".st5",{strokeWidth:"20px",stroke:"blue"})
 // myAnim2.set(".st8",{fill:"none",strokeWidth:"20px",stroke:"red"})
