@@ -19,7 +19,6 @@ function generateUniqueId() {
 const getUniqueId = generateUniqueId();
 
 function Rumin(elm) {
-
     let setedValue = "";
     function getDashoffset(e) {
         // dasharray and dashoffset in percent
@@ -51,8 +50,7 @@ function Rumin(elm) {
         delay = elm.delay || "0s",
         timeScale = elm.timeScale || 1,
         repeat = elm.repeat || "",
-        direction = elm.direction || "",
-        yoyo = elm.yoyo || direction,
+        direction = elm.direction || elm.yoyo || "",
         motionPath = elm.motionPath || "",
         offsetPath = elm.offsetPath || motionPath,
         makeKeyframes = elm.makeKeyframes || "",
@@ -98,7 +96,47 @@ function Rumin(elm) {
             }
 
             function getTotalTIme() {
-                return totalDur
+                // console.log(this.cssTl)
+                return this.cssTl.reduce((a, c) => a + c.duration, 0)
+            }
+            function getKeyframeAt(currentIndex) {
+                if (!(currentIndex < this.cssTl.length)) {
+                    return 0;
+                }
+                let keyframeAt = 0;
+                for (let i = 0; i <= currentIndex; i++) {
+                    keyframeAt += this.cssTl[i].duration
+                }
+                return keyframeAt;
+            }
+            function transformArray(initialArray) {
+                const finalArray = [];
+                let previousElements = {};
+
+                initialArray.forEach((obj, index) => {
+                    // If object has no duration, set duration to 1
+                    if (!('duration' in obj)) {
+                        obj.duration = 1;
+                    }
+
+                    // Create a new object with properties from previousElements, but updated delay with duration
+                    if ('delay' in obj) {
+                        const newObj = { ...previousElements };
+                        newObj.duration = obj.delay;
+                        finalArray.push(newObj);
+
+                        // Remove delay from the current object
+                        delete obj.delay;
+                    }
+
+                    // Update previousElements to include current object's properties
+                    previousElements = { ...previousElements, ...obj };
+
+                    // Push the current object to the final array
+                    finalArray.push({ ...obj });
+                });
+
+                return finalArray;
             }
             function removeBlankLine(e) {
                 let y = e.replace(/(^[ \t]*\n)/gm, "")
@@ -106,45 +144,56 @@ function Rumin(elm) {
             }
 
             function makeCssKeyframes() {
+                this.cssTl = transformArray(this.cssTl)
+                if (!totalDur) {
+                    totalDur = this.cssTl[this.cssTl.length - 1].duration
+                    // console.log("duration not found: ", totalDur)
+                }
+                if (this.cssTl[0].duration !== 0) {
+                    this.cssTl.unshift({
+                        ...this.cssTl[0],
+                        duration: 0
+                    })
+                }
                 let getAllKeyframes = ''
-                this.cssTl.forEach(e => {
-                    makeKeyframes = (keyframeAt, totalDur) => {
+                this.cssTl.forEach((cssTlElement, indexOfcssTl) => {
+                    let makeKeyframes = (keyframeAt, totalDur) => {
                         let singleKeyframe = `${p_keyframes(keyframeAt, totalDur)}% {
-    ${((e.opacity != '') && (e.opacity != undefined)) ? "opacity:" + e.opacity + ";" : ""}
-    ${((e.color != '') && (e.color != undefined)) ? "color:" + e.color + ";" : ""}
-    ${((e.fill != '') && (e.fill != undefined)) ? "fill:" + e.fill + ";" : ""}
-    ${((e.backgroundColor != '') && (e.backgroundColor!= undefined)) ? "background-color:" + e.backgroundColor + ";" : ""}
-    ${((e.filter != '') && (e.filter != undefined)) ? "filter:" + e.filter + ";" : ""}
-    ${((e.top != '') && (e.top != undefined)) ? "top:" + e.top + ";" : ""}
-    ${((e.left != '') && (e.left != undefined)) ? "left:" + e.left + ";" : ""}
-    ${((e.right != '') && (e.right != undefined)) ? "right:" + e.right + ";" : ""}
-    ${((e.bottom != '') && (e.bottom != undefined)) ? "bottom:" + e.bottom + ";" : ""}
-    ${((e.easing != '') && (e.easing != undefined)) ? "ease:" + e.easing + ";" : ""}
-    ${((e.transform != '') && (e.transform != undefined)) ? "transform:" + e.transform + ";" : ""}
-    ${((e.path != '') && (e.path != undefined)) ? "d:path(\"" + e.path + "\");" : ""}
-    ${((e.draw != '') && (e.draw != undefined)) ? "stroke-dashoffset:" + drawStroke(e.draw)[0] + ";" + "stroke-dasharray:" + drawStroke(e.draw)[1] + ";" : ""}
-    ${((e.strokeDashoffset != '') && (e.strokeDashoffset != undefined)) ? "stroke-dashoffset:" + getDashoffset(e.strokeDashoffset) + ";" : ""}
-    ${((e.strokeDasharray != '') && (e.strokeDasharray != undefined)) ? "stroke-dasharray:" + getDashoffset(e.strokeDasharray) + ";" : ""}
-    ${((e.offsetDistance != '') && (e.offsetDistance != undefined)) ? "offset-distance:" + e.offsetDistance + ";" : ""}
+    ${((cssTlElement.opacity != '') && (cssTlElement.opacity != undefined)) ? "opacity:" + cssTlElement.opacity + ";" : ""}
+    ${((cssTlElement.color != '') && (cssTlElement.color != undefined)) ? "color:" + cssTlElement.color + ";" : ""}
+    ${((cssTlElement.fill != '') && (cssTlElement.fill != undefined)) ? "fill:" + cssTlElement.fill + ";" : ""}
+    ${((cssTlElement.backgroundColor != '') && (cssTlElement.backgroundColor != undefined)) ? "background-color:" + cssTlElement.backgroundColor + ";" : ""}
+    ${((cssTlElement.filter != '') && (cssTlElement.filter != undefined)) ? "filter:" + cssTlElement.filter + ";" : ""}
+    ${((cssTlElement.top != '') && (cssTlElement.top != undefined)) ? "top:" + cssTlElement.top + ";" : ""}
+    ${((cssTlElement.left != '') && (cssTlElement.left != undefined)) ? "left:" + cssTlElement.left + ";" : ""}
+    ${((cssTlElement.right != '') && (cssTlElement.right != undefined)) ? "right:" + cssTlElement.right + ";" : ""}
+    ${((cssTlElement.bottom != '') && (cssTlElement.bottom != undefined)) ? "bottom:" + cssTlElement.bottom + ";" : ""}
+    ${((cssTlElement.easing != '') && (cssTlElement.easing != undefined)) ? "ease:" + cssTlElement.easing + ";" : ""}
+    ${((cssTlElement.transform != '') && (cssTlElement.transform != undefined)) ? "transform:" + cssTlElement.transform + ";" : ""}
+    ${((cssTlElement.path != '') && (cssTlElement.path != undefined)) ? "d:path(\"" + cssTlElement.path + "\");" : ""}
+    ${((cssTlElement.draw != '') && (cssTlElement.draw != undefined)) ? "stroke-dashoffset:" + drawStroke(cssTlElement.draw)[0] + ";" + "stroke-dasharray:" + drawStroke(cssTlElement.draw)[1] + ";" : ""}
+    ${((cssTlElement.strokeDashoffset != '') && (cssTlElement.strokeDashoffset != undefined)) ? "stroke-dashoffset:" + getDashoffset(cssTlElement.strokeDashoffset) + ";" : ""}
+    ${((cssTlElement.strokeDasharray != '') && (cssTlElement.strokeDasharray != undefined)) ? "stroke-dasharray:" + getDashoffset(cssTlElement.strokeDasharray) + ";" : ""}
+    ${((cssTlElement.offsetDistance != '') && (cssTlElement.offsetDistance != undefined)) ? "offset-distance:" + cssTlElement.offsetDistance + ";" : ""}
 }`
                         return singleKeyframe;
                     }
-                    getAllKeyframes += makeKeyframes(e.keyframeAt, getTotalTIme())
+                    getAllKeyframes += makeKeyframes(getKeyframeAt(indexOfcssTl), getTotalTIme())
                 });
 
                 let timelinieDef = `${(target != '') ? target : "id_Name"}{
     ${setedValue}
-    animation: ${(animName != '') ? replaceWithUnderscores(animName) : "animName"} ${getTotalTIme() * timeScale}s ${(easing != '') ? easing : "ease-in-out"}  ${(delay != '') ? delay : "0s"}  ${(repeat != '') ? repeat : "1"} ${(yoyo != '') ? yoyo : "normal"};
+    animation: ${(animName != '') ? replaceWithUnderscores(animName) : "animName"} ${getTotalTIme() * timeScale}s ${(easing != '') ? easing : "ease-in-out"}  ${(delay != '') ? delay : "0s"} ${(repeat == -1) ? 'infinite' : repeat != "" ? repeat : "1"} ${(direction != '') ? direction : "normal"};
             
     ${((offsetPath != '') && (offsetPath != undefined)) ? "offset-path:path(\"" + offsetPath + "\");" : ""}
 }`
 
-                keyframes = `@keyframes ${replaceWithUnderscores(animName)} {
+                let keyframes = `@keyframes ${replaceWithUnderscores(animName)} {
         ${getAllKeyframes}
     }`
 
-                console.log(`${removeBlankLine(timelinieDef)}
-${removeBlankLine(keyframes)}`)
+                //                 console.log(`${removeBlankLine(timelinieDef)}
+                // ${removeBlankLine(keyframes)}`)
 
                 let ruminStyle = document.getElementById("ruminStyle");
                 if (!ruminStyle) {
@@ -182,26 +231,14 @@ ${removeBlankLine(keyframes)}`)
 // let myAnim2 = new Rumin({
 //     target:"#box2",
 //     animName:"myidanim",
-//     duration:6,
 //     easing:"ease-in-out",
+//     direction: 'forwards',
 //     repeat:"infinite"
 // })
 // myAnim2.set(".st5",{strokeWidth:"20px",stroke:"blue"})
 // myAnim2.set(".st8",{fill:"none",strokeWidth:"20px",stroke:"red"})
-// myAnim2.add({
-//     keyframeAt:0,
-//     transform:"translateX(0px)",
-//     opacity:1
-// })
-// myAnim2.add({
-//     keyframeAt:3,
-//     transform:"translateX(250px)",
-//     opacity:0.5
-// })
-// myAnim2.add({
-//     keyframeAt:6,
-//     transform:"translateX(0px)",
-//     opacity:1,
-//     offsetDistance:"10%"
-// })
-// myAnim2.play()
+// .add({ duration: 0, draw: "0% 20%", transform: "translate(0px, 0px)" })
+// .add({ duration: 0.2, transform: "translate(30px, 40px)" })
+// .add({ delay: 1, draw: "50% 60%" })
+// .add({ delay: 0.5, draw: "100% 100%", transform: "translate(20px, 80px)" })
+// .play()
