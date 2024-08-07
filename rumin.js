@@ -15,6 +15,29 @@ function generateUniqueId() {
     }
 }
 
+const _AccpetedAnimationProperty = {
+    opacity: "opacity",
+    color: "color",
+    fill: "fill",
+    backgroundColor: "background-color",
+    "background-color": "background-color",
+    filter: "filter",
+    top: "top",
+    left: "left",
+    right: "right",
+    bottom: "bottom",
+    easing: "easing",
+    transform: "transform",
+    path: "path",
+    draw: "draw",
+    strokeDashoffset: "stroke-dashoffset",
+    "stroke-dashoffset": "stroke-dashoffset",
+    strokeDasharray: "stroke-dasharray",
+    "stroke-dasharray": "stroke-dasharray",
+    offsetDistance: "offset-distance",
+    "offset-distance": "offset-distance",
+}
+
 // Create an instance of the ID generator
 const getUniqueId = generateUniqueId();
 
@@ -41,6 +64,54 @@ function Rumin(elm) {
         y = `${z}px ${trl + 10}px`
         return [c, y]
     };
+
+    function getCssFormatedProperty(key, value) {
+        switch (key) {
+            case "stroke-dashoffset":
+                return key + ":" + getDashoffset(value) + ";";
+            case "stroke-dasharray":
+                return key + ":" + getDashoffset(value) + ";";
+            case "offset-distance":
+                return key + ":" + value + ";";
+            case "path":
+                return "d:path(\"" + value + "\");";
+            case "draw":
+                return "stroke-dashoffset:" + drawStroke(value)[0] + ";" + "stroke-dasharray:" + drawStroke(value)[1] + ";";
+            default:
+                return key + ":" + value + ";";
+        }
+    };
+
+    function percent_value_of_keyframes(time, totlTime) {
+        let e = (time / totlTime) * 100;
+        return e
+    };
+    function makeKeyframe(cssTlElement, keyframeAt, totalDur) {
+        // start keyframe identifier with keyframe value
+        let singleKeyframe = percent_value_of_keyframes(keyframeAt, totalDur) + "%{\n"
+        // get list of input css property keys for animation
+        const cssElementKeys = Object.keys(cssTlElement)
+        // get length of input css property for animation
+        const lengthOfCssElement = cssElementKeys.length
+        for (let i = 0; i < lengthOfCssElement; i++) {
+            // current key for current index based on array value
+            const cssElementKey = cssElementKeys[i]
+            // check is it valid for this animation
+            if (Object.hasOwnProperty.call(cssTlElement, cssElementKey) && Object.hasOwnProperty.call(_AccpetedAnimationProperty, cssElementKey)) {
+                // css value
+                const element = cssTlElement[cssElementKey];
+                // if css value found then get css property formatted for each keyframe
+                if ((element != '') && (element != undefined)) {
+                    singleKeyframe += "\n"+getCssFormatedProperty(_AccpetedAnimationProperty[cssElementKey], element) + "\n"
+                }
+            }
+        }
+        // finally close keyframe identifire
+        singleKeyframe += "}"
+        // finally return single keyframe
+        return singleKeyframe;
+    }
+
     target = elm.target || "",
         animName = elm.animName || `${elm.target}_${getUniqueId()}`,
         totalDur = elm.duration || "",
@@ -54,7 +125,6 @@ function Rumin(elm) {
         direction = elm.direction || elm.yoyo || "",
         motionPath = elm.motionPath || "",
         offsetPath = elm.offsetPath || motionPath,
-        makeKeyframes = elm.makeKeyframes || "",
         cssTl = [],
         this.set = (elms, vals) => {
             elms = document.querySelectorAll(elms)
@@ -91,10 +161,7 @@ function Rumin(elm) {
                 navigator.clipboard.writeText(document.getElementById("ruminStyle").innerHTML)
             })
             // start playing animation
-            let p_keyframes = (time, totlTime) => {
-                let e = (time / totlTime) * 100;
-                return e
-            }
+
 
             function getTotalTIme() {
                 // console.log(this.cssTl)
@@ -155,7 +222,7 @@ function Rumin(elm) {
                         duration: 0
                     })
                 }
-                if(repeatDelay && repeatDelay > 0){
+                if (repeatDelay && repeatDelay > 0) {
                     this.cssTl.push({
                         ...this.cssTl[this.cssTl.length - 1],
                         duration: repeatDelay
@@ -163,45 +230,20 @@ function Rumin(elm) {
                 }
                 console.log(this.cssTl)
 
-                let getAllKeyframes = ''
+                let keyframesList = ''
                 this.cssTl.forEach((cssTlElement, indexOfcssTl) => {
-                    let makeKeyframes = (keyframeAt, totalDur) => {
-                        let singleKeyframe = `${p_keyframes(keyframeAt, totalDur)}% {
-    ${((cssTlElement.opacity != '') && (cssTlElement.opacity != undefined)) ? "opacity:" + cssTlElement.opacity + ";" : ""}
-    ${((cssTlElement.color != '') && (cssTlElement.color != undefined)) ? "color:" + cssTlElement.color + ";" : ""}
-    ${((cssTlElement.fill != '') && (cssTlElement.fill != undefined)) ? "fill:" + cssTlElement.fill + ";" : ""}
-    ${((cssTlElement.backgroundColor != '') && (cssTlElement.backgroundColor != undefined)) ? "background-color:" + cssTlElement.backgroundColor + ";" : ""}
-    ${((cssTlElement.filter != '') && (cssTlElement.filter != undefined)) ? "filter:" + cssTlElement.filter + ";" : ""}
-    ${((cssTlElement.top != '') && (cssTlElement.top != undefined)) ? "top:" + cssTlElement.top + ";" : ""}
-    ${((cssTlElement.left != '') && (cssTlElement.left != undefined)) ? "left:" + cssTlElement.left + ";" : ""}
-    ${((cssTlElement.right != '') && (cssTlElement.right != undefined)) ? "right:" + cssTlElement.right + ";" : ""}
-    ${((cssTlElement.bottom != '') && (cssTlElement.bottom != undefined)) ? "bottom:" + cssTlElement.bottom + ";" : ""}
-    ${((cssTlElement.easing != '') && (cssTlElement.easing != undefined)) ? "ease:" + cssTlElement.easing + ";" : ""}
-    ${((cssTlElement.transform != '') && (cssTlElement.transform != undefined)) ? "transform:" + cssTlElement.transform + ";" : ""}
-    ${((cssTlElement.path != '') && (cssTlElement.path != undefined)) ? "d:path(\"" + cssTlElement.path + "\");" : ""}
-    ${((cssTlElement.draw != '') && (cssTlElement.draw != undefined)) ? "stroke-dashoffset:" + drawStroke(cssTlElement.draw)[0] + ";" + "stroke-dasharray:" + drawStroke(cssTlElement.draw)[1] + ";" : ""}
-    ${((cssTlElement.strokeDashoffset != '') && (cssTlElement.strokeDashoffset != undefined)) ? "stroke-dashoffset:" + getDashoffset(cssTlElement.strokeDashoffset) + ";" : ""}
-    ${((cssTlElement.strokeDasharray != '') && (cssTlElement.strokeDasharray != undefined)) ? "stroke-dasharray:" + getDashoffset(cssTlElement.strokeDasharray) + ";" : ""}
-    ${((cssTlElement.offsetDistance != '') && (cssTlElement.offsetDistance != undefined)) ? "offset-distance:" + cssTlElement.offsetDistance + ";" : ""}
-}`
-                        return singleKeyframe;
-                    }
-                    getAllKeyframes += makeKeyframes(getKeyframeAt(indexOfcssTl), getTotalTIme())
+                    keyframesList += makeKeyframe(cssTlElement,getKeyframeAt(indexOfcssTl), getTotalTIme())
+                    
                 });
 
-                let timelinieDef = `${(target != '') ? target : "id_Name"}{
-    ${setedValue}
-    animation: ${(animName != '') ? replaceWithUnderscores(animName) : "animName"} ${getTotalTIme() * timeScale}s ${(easing != '') ? easing : "ease-in-out"}  ${(delay != '') ? delay : "0s"} ${(repeat == -1) ? 'infinite' : repeat != "" ? repeat : "1"} ${(direction != '') ? direction : "normal"};
-            
-    ${((offsetPath != '') && (offsetPath != undefined)) ? "offset-path:path(\"" + offsetPath + "\");" : ""}
-}`
+                let timelinieDef = (target != '') ? target : "id_Name";
+                timelinieDef += "{"+ setedValue +"\n"
+                timelinieDef +=`animation: ${(animName != '') ? replaceWithUnderscores(animName) : "animName"} ${getTotalTIme() * timeScale}s ${(easing != '') ? easing : "ease-in-out"}  ${(delay != '') ? delay : "0s"} ${(repeat == -1) ? 'infinite' : repeat != "" ? repeat : "1"} ${(direction != '') ? direction : "normal"};\n`
+                timelinieDef +=`${((offsetPath != '') && (offsetPath != undefined)) ? "offset-path:path(\"" + offsetPath + "\");" : ""}}\n`
 
-                let keyframes = `@keyframes ${replaceWithUnderscores(animName)} {
-        ${getAllKeyframes}
-    }`
-
-                //                 console.log(`${removeBlankLine(timelinieDef)}
-                // ${removeBlankLine(keyframes)}`)
+                let keyframes = `@keyframes ${replaceWithUnderscores(animName)} {\n`
+                    keyframes += keyframesList + "\n"
+                    keyframes += "}\n"
 
                 let ruminStyle = document.getElementById("ruminStyle");
                 if (!ruminStyle) {
