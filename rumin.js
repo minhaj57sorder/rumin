@@ -1,3 +1,84 @@
+
+var is = {
+    arr: function (a) { return Array.isArray(a); },
+    obj: function (a) { return stringContains(Object.prototype.toString.call(a), 'Object'); },
+    pth: function (a) { return is.obj(a) && a.hasOwnProperty('totalLength'); },
+    svg: function (a) { return a instanceof SVGElement; },
+    inp: function (a) { return a instanceof HTMLInputElement; },
+    dom: function (a) { return a.nodeType || is.svg(a); },
+    str: function (a) { return typeof a === 'string'; },
+    fnc: function (a) { return typeof a === 'function'; },
+    und: function (a) { return typeof a === 'undefined'; },
+    nil: function (a) { return is.und(a) || a === null; },
+    hex: function (a) { return /(^#[0-9A-F]{6}$)|(^#[0-9A-F]{3}$)/i.test(a); },
+    rgb: function (a) { return /^rgb/.test(a); },
+    hsl: function (a) { return /^hsl/.test(a); },
+    col: function (a) { return (is.hex(a) || is.rgb(a) || is.hsl(a)); },
+    key: function (a) { return !defaultInstanceSettings.hasOwnProperty(a) && !defaultTweenSettings.hasOwnProperty(a) && a !== 'targets' && a !== 'keyframes'; },
+};
+function normalizeAndAlignPaths(selectors) {
+    function normalizePath(path, totalPoints) {
+        const length = path.getTotalLength();
+        const step = length / (totalPoints - 1);
+        let normalizedPoints = [];
+
+        for (let i = 0; i < totalPoints; i++) {
+            const point = path.getPointAtLength(i * step);
+            normalizedPoints.push({ x: point.x, y: point.y });
+        }
+
+        return normalizedPoints;
+    }
+
+    function findClosestIndex(points, referencePoint) {
+        let closestIndex = 0;
+        let minDistance = Infinity;
+
+        points.forEach((point, index) => {
+            const distance = Math.hypot(point.x - referencePoint.x, point.y - referencePoint.y);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestIndex = index;
+            }
+        });
+
+        return closestIndex;
+    }
+
+    function reorderPath(points, startIndex) {
+        return points.slice(startIndex).concat(points.slice(0, startIndex));
+    }
+
+    function pointsToPathData(points) {
+        return points.map((point, index) => {
+            return `${index === 0 ? 'M' : 'L'}${point.x},${point.y}`;
+        }).join(' ');
+    }
+
+    function normalizeAndAlignPaths(paths) {
+        const totalPoints = paths.reduce((max, path) => Math.max(max, path.getTotalLength()), 0);
+        const normalizedPaths = paths.map(path => normalizePath(path, totalPoints));
+
+        const referencePoint = normalizedPaths[0][0];
+
+        const alignedPaths = normalizedPaths.map(points => {
+            const startIndex = findClosestIndex(points, referencePoint);
+            const reorderedPoints = reorderPath(points, startIndex);
+            return pointsToPathData(reorderedPoints);
+        });
+
+        return alignedPaths;
+    }
+
+    // Usage example
+    const paths = document.querySelectorAll(`${selectors}`);
+    const normalizedAndAlignedPathsOutput = normalizeAndAlignPaths(Array.from(paths));
+
+    // Apply the normalized and aligned paths back to the elements
+    normalizedAndAlignedPathsOutput.forEach((d, i) => {
+        paths[i].setAttribute('d', d);
+    });
+}
 function replaceWithUnderscores(string) {
     const specialCharsAndWhitespaceRegex = /[\s\W-]+/g;
     return string.replace(specialCharsAndWhitespaceRegex, '_');
@@ -65,20 +146,39 @@ function Rumin(elm) {
         return [c, y]
     };
 
+    function getPathValues(path) {
+        if (is.str(path)) {
+            const pathNode = document.querySelector(path)
+            if (pathNode && pathNode instanceof SVGPathElement) {
+                return pathNode.getAttribute('d').replaceAll("\n", " ")
+            } else {
+                return path
+            }
+        }
+        else if (is.obj(path)) {
+            if (path && path instanceof SVGPathElement) {
+                return path.getAttribute('d').replace("\n", " ")
+            }
+        }
+        else {
+            return path
+        }
+    }
+
     function getCssFormatedProperty(key, value) {
         switch (key) {
             case "stroke-dashoffset":
-                return key + ":" + getDashoffset(value) + ";";
+                return key + ":" + getDashoffset(value) + ";\n";
             case "stroke-dasharray":
-                return key + ":" + getDashoffset(value) + ";";
+                return key + ":" + getDashoffset(value) + ";\n";
             case "offset-distance":
-                return key + ":" + value + ";";
+                return key + ":" + value + ";\n";
             case "path":
-                return "d:path(\"" + value + "\");";
+                return "d:path(\"" + getPathValues(value) + "\");\n";
             case "draw":
-                return "stroke-dashoffset:" + drawStroke(value)[0] + ";" + "stroke-dasharray:" + drawStroke(value)[1] + ";";
+                return "stroke-dashoffset:" + drawStroke(value)[0] + ";\n\t\t" + "stroke-dasharray:" + drawStroke(value)[1] + ";\n";
             default:
-                return key + ":" + value + ";";
+                return key + ":" + value + ";\n";
         }
     };
 
@@ -102,12 +202,12 @@ function Rumin(elm) {
                 const element = cssTlElement[cssElementKey];
                 // if css value found then get css property formatted for each keyframe
                 if ((element != '') && (element != undefined)) {
-                    singleKeyframe += "\n"+getCssFormatedProperty(_AccpetedAnimationProperty[cssElementKey], element) + "\n"
+                    singleKeyframe += "\n\t\t" + getCssFormatedProperty(_AccpetedAnimationProperty[cssElementKey], element) + "\n"
                 }
             }
         }
         // finally close keyframe identifire
-        singleKeyframe += "}"
+        singleKeyframe += "\t}"
         // finally return single keyframe
         return singleKeyframe;
     }
@@ -155,10 +255,18 @@ function Rumin(elm) {
             button.style.position = 'fixed';
             button.style.left = '50%';
             button.style.bottom = '25px';
+            button.style.backgroundColor = 'white';
+            button.style.color = 'black';
+            button.style.padding = '5px 10px';
+            button.style.borderRadius = '5px';
             button.style.transform = 'translate(-50%, -50%)';
             document.body.appendChild(button);
             button.addEventListener('click', function () {
+                button.innerText = 'Copied';
                 navigator.clipboard.writeText(document.getElementById("ruminStyle").innerHTML)
+                setTimeout(() => {
+                    button.innerText = 'Copy Css To Clipboard';
+                }, 1000)
             })
             // start playing animation
 
@@ -216,34 +324,48 @@ function Rumin(elm) {
                     totalDur = this.cssTl[this.cssTl.length - 1].duration
                     // console.log("duration not found: ", totalDur)
                 }
+                // add starting keyframe duration to adjust css keyframe
                 if (this.cssTl[0].duration !== 0) {
                     this.cssTl.unshift({
                         ...this.cssTl[0],
                         duration: 0
                     })
                 }
+                // add delay at after animation done, effective for repeat animation
                 if (repeatDelay && repeatDelay > 0) {
                     this.cssTl.push({
                         ...this.cssTl[this.cssTl.length - 1],
                         duration: repeatDelay
                     })
                 }
-                console.log(this.cssTl)
+                // console.log(this.cssTl)
 
+                // if morph animation then normalize path
+                const isMorphExist = this.cssTl.some(e => e.hasOwnProperty('path'))
+                if (isMorphExist) {
+                    const selectors = this.cssTl.map(e => {
+                        if(e.hasOwnProperty('path')){
+                            return e.path
+                        }else{
+                            return ""
+                        }
+                    }).join(", ")
+                    normalizeAndAlignPaths(selectors)
+                }
                 let keyframesList = ''
                 this.cssTl.forEach((cssTlElement, indexOfcssTl) => {
-                    keyframesList += makeKeyframe(cssTlElement,getKeyframeAt(indexOfcssTl), getTotalTIme())
-                    
+                    keyframesList += "\n\t" + makeKeyframe(cssTlElement, getKeyframeAt(indexOfcssTl), getTotalTIme())
+
                 });
 
                 let timelinieDef = (target != '') ? target : "id_Name";
-                timelinieDef += "{"+ setedValue +"\n"
-                timelinieDef +=`animation: ${(animName != '') ? replaceWithUnderscores(animName) : "animName"} ${getTotalTIme() * timeScale}s ${(easing != '') ? easing : "ease-in-out"}  ${(delay != '') ? delay : "0s"} ${(repeat == -1) ? 'infinite' : repeat != "" ? repeat : "1"} ${(direction != '') ? direction : "normal"};\n`
-                timelinieDef +=`${((offsetPath != '') && (offsetPath != undefined)) ? "offset-path:path(\"" + offsetPath + "\");" : ""}}\n`
+                timelinieDef += "{\n\t" + setedValue + "\n"
+                timelinieDef += `\tanimation: ${(animName != '') ? replaceWithUnderscores(animName) : "animName"} ${getTotalTIme() * timeScale}s ${(easing != '') ? easing : "ease-in-out"}  ${(delay != '') ? delay : "0s"} ${(repeat == -1) ? 'infinite' : repeat != "" ? repeat : "1"} ${(direction != '') ? direction : "normal"};\n`
+                timelinieDef += `${((offsetPath != '') && (offsetPath != undefined)) ? "offset-path:path(\"" + offsetPath + "\");" : ""}}\n`
 
-                let keyframes = `@keyframes ${replaceWithUnderscores(animName)} {\n`
-                    keyframes += keyframesList + "\n"
-                    keyframes += "}\n"
+                let keyframes = "@keyframes " + replaceWithUnderscores(animName) + "{\n"
+                keyframes += " \t" + keyframesList + "\n"
+                keyframes += "}\n"
 
                 let ruminStyle = document.getElementById("ruminStyle");
                 if (!ruminStyle) {
@@ -251,9 +373,9 @@ function Rumin(elm) {
                     ruminStyle.id = "ruminStyle"
                     document.head.appendChild(ruminStyle)
                 }
-
-                document.getElementById('ruminStyle').innerHTML += `${removeBlankLine(timelinieDef)}
-        ${removeBlankLine(keyframes)}`
+                let innerData = removeBlankLine(timelinieDef)
+                innerData += removeBlankLine(keyframes)
+                document.getElementById('ruminStyle').innerHTML += innerData
             }
             makeCssKeyframes()
         }
@@ -292,4 +414,8 @@ function Rumin(elm) {
 // .add({ duration: 0.2, transform: "translate(30px, 40px)" })
 // .add({ delay: 1, draw: "50% 60%" })
 // .add({ delay: 0.5, draw: "100% 100%", transform: "translate(20px, 80px)" })
+// .add({ duration: 0, path: "#circle" })
+// .add({ duration: 1, path: "#hippo" })
+// .add({ duration: 1, path: "#circle" })
 // .play()
+
